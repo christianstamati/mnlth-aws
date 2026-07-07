@@ -2,7 +2,7 @@
 
 TanStack Start + Convex monorepo.
 
-- `apps/web` — TanStack Start app (Vite), deployed to Vercel
+- `apps/web` — TanStack Start app (Vite), deployed to AWS
 - `packages/backend` — Convex backend (schema + functions + tests)
 - `packages/ui` — shared shadcn/ui components
 
@@ -21,7 +21,7 @@ TanStack Start + Convex monorepo.
 | CI                      | GitHub Actions (lint, typecheck, test)                                                                                                       |
 | Code review             | [Greptile](https://greptile.com) (AI review on every PR, configured in `greptile.json`)                                                      |
 | Versioning / changelog  | [Changesets](https://github.com/changesets/changesets) (version PR → tags + GitHub Releases)                                                 |
-| Deployment              | [Vercel](https://vercel.com) (web) + Convex preview/production deployments                                                                   |
+| Deployment              | AWS (web) + Convex deployments — setup in progress                                                                                           |
 
 ## Getting started (new developer)
 
@@ -55,14 +55,10 @@ If the web app ever complains about a missing/incorrect `VITE_CONVEX_URL`, run
 1. Branch off `main` (e.g. `feat/thing`), commit, push, open a PR.
 2. GitHub Actions runs **CI** (Biome lint/format + typecheck + tests) and
    **Greptile** posts an automatic AI review with inline comments.
-3. Vercel builds a **preview deployment**; during the build, `convex deploy`
-   (with the *preview* deploy key) creates a matching **Convex preview
-   deployment** named after the branch, and the preview frontend is pointed at
-   it. Each PR gets its own isolated full-stack environment.
-4. Fix review findings, merge.
-5. On merge to `main`, Vercel builds production; `convex deploy` (with the
-   *production* deploy key) pushes functions/schema to the production Convex
-   deployment.
+3. Fix review findings, merge.
+4. On merge to `main`, the AWS deployment pipeline builds and deploys the web
+   app, and `convex deploy` pushes functions/schema to the production Convex
+   deployment. (AWS pipeline setup in progress.)
 
 ## Releases (Changesets)
 
@@ -105,27 +101,6 @@ import { Button } from "@workspace/ui/components/button"
 ```
 
 ## One-time project configuration
-
-### Vercel
-
-- **Root Directory**: `apps/web`
-- **Install Command**: `bun install`
-- **Build Command**:
-
-  ```bash
-  cd ../../packages/backend && bunx convex deploy --cmd-url-env-var-name VITE_CONVEX_URL --cmd 'cd ../../apps/web && bun run build'
-  ```
-
-- **Environment variables**:
-  - Production scope: `CONVEX_DEPLOY_KEY` = production deploy key
-    (Convex dashboard → project → Settings → Deploy keys → *Production*)
-  - Preview scope: `CONVEX_DEPLOY_KEY` = preview deploy key
-    (same page → *Preview* — requires the Convex Pro plan)
-
-`convex deploy` reads the key to decide where to deploy: a preview key makes it
-create/update a preview deployment named after the git branch; the production
-key deploys to production. In both cases it injects the right
-`VITE_CONVEX_URL` into the frontend build.
 
 ### GitHub
 
