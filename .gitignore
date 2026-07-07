@@ -14,5 +14,8 @@ todos.json
 # turbo
 .turbo
 
+# sst
+.sst
+
 # typescript
 *.tsbuildinfo
