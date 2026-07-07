@@ -1,0 +1,25 @@
+{
+  "name": "@workspace/backend",
+  "version": "0.0.0",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "dev": "convex dev",
+    "setup": "convex dev --once --configure existing --team chridev --project mnlth --dev-deployment local",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit -p convex"
+  },
+  "exports": {
+    "./convex/*": "./convex/*.js"
+  },
+  "dependencies": {
+    "convex": "catalog:"
+  },
+  "devDependencies": {
+    "@edge-runtime/vm": "^5.0.0",
+    "convex-test": "^0.0.54",
+    "typescript": "^6",
+    "vitest": "^4.1.10"
+  }
+}

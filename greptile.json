@@ -1,0 +1,9 @@
+{
+  "strictness": 2,
+  "commentTypes": ["logic", "syntax"],
+  "triggerOnUpdates": true,
+  "ignorePatterns": "**/_generated/**\n**/routeTree.gen.ts\nbun.lock\n**/CHANGELOG.md\n.changeset/**",
+  "excludeAuthors": ["github-actions[bot]"],
+  "instructions": "This is a Bun + Turborepo monorepo. The backend is Convex (packages/backend/convex): flag missing auth checks, unvalidated args, missing return validators, unindexed queries, and unbounded .collect() on tables that can grow. The frontend is React 19 + TanStack Start + TanStack Query (apps/web): flag SSR-unsafe code, hook misuse, and missing route loaders for suspense queries. Do not leave nitpicks, praise, or style comments; Biome handles formatting.",
+  "statusCheck": true
+}
