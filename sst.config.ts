@@ -35,18 +35,6 @@ export default $config({
           return { stage: `pr-${event.number}` }
         }
       },
-      async workflow({ $, event }) {
-        // The default runner image's /usr/local/bin/node is missing
-        // libatomic.so.1, which breaks `npm install -g bun`
-        await $`sudo dnf install -y libatomic || sudo yum install -y libatomic`
-        await $`npm install -g bun@1.3.13`
-        await $`bun install`
-        if (event.action === "removed") {
-          await $`bun sst remove`
-        } else {
-          await $`bun sst deploy`
-        }
-      },
     },
   },
   async run() {
