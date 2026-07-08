@@ -21,7 +21,7 @@ TanStack Start + Convex monorepo.
 | CI                      | GitHub Actions (lint, typecheck, test)                                                                                                       |
 | Code review             | [Greptile](https://greptile.com) (AI review on every PR, configured in `greptile.json`)                                                      |
 | Versioning / changelog  | [Changesets](https://github.com/changesets/changesets) (version PR → tags + GitHub Releases)                                                 |
-| Deployment              | AWS (web) + Convex deployments — setup in progress                                                                                           |
+| Deployment              | AWS via [SST](https://sst.dev) — web on Lambda+CloudFront, self-hosted Convex on ECS Fargate + RDS Postgres + S3                             |
 
 ## Getting started (new developer)
 
@@ -55,10 +55,55 @@ If the web app ever complains about a missing/incorrect `VITE_CONVEX_URL`, run
 1. Branch off `main` (e.g. `feat/thing`), commit, push, open a PR.
 2. GitHub Actions runs **CI** (Biome lint/format + typecheck + tests) and
    **Greptile** posts an automatic AI review with inline comments.
-3. Fix review findings, merge.
-4. On merge to `main`, the AWS deployment pipeline builds and deploys the web
-   app, and `convex deploy` pushes functions/schema to the production Convex
-   deployment. (AWS pipeline setup in progress.)
+3. The SST Console autodeploys a **preview stage** (`pr-<number>`) with its
+   own web deployment; previews share the production Convex backend.
+4. Fix review findings, merge. Closing the PR tears the preview stage down.
+5. On merge to `main`, the SST Console deploys the `production` stage:
+   infrastructure, Convex functions (pushed automatically during the deploy),
+   and the web app.
+
+## Deployment (AWS via SST)
+
+Everything is defined in `sst.config.ts` and deployed with:
+
+```bash
+bunx sst deploy --stage production
+```
+
+The production stage runs:
+
+- **Web**: TanStack Start on Lambda (nitro `aws-lambda` preset) behind
+  CloudFront, assets on S3
+- **Convex (self-hosted)**: `ghcr.io/get-convex/convex-backend` on ECS
+  Fargate (1 vCPU / 2 GB) behind an ALB, RDS Postgres (`db.t4g.micro`,
+  database `mnlth`), five S3 buckets for storage, and two CloudFront
+  distributions for HTTPS (API on origin port 80 → 3210, HTTP actions on
+  origin port 3211)
+- Convex functions are pushed automatically during every production deploy
+
+Secrets (set once per stage with `bunx sst secret set <name> <value>`):
+
+- `ConvexInstanceSecret` — 64-char hex; the backend's root secret
+- `ConvexAdminKey` — derived from the instance secret; regenerate with:
+  `docker run --rm --entrypoint ./generate_admin_key.sh -e INSTANCE_NAME=mnlth -e INSTANCE_SECRET=<secret> ghcr.io/get-convex/convex-backend:latest`
+
+To target the self-hosted backend with the Convex CLI:
+
+```bash
+CONVEX_DEPLOYMENT="" \
+CONVEX_SELF_HOSTED_URL=<convexApi url> \
+CONVEX_SELF_HOSTED_ADMIN_KEY=<admin key> \
+bunx convex <command>
+```
+
+Gotchas encoded in `sst.config.ts` (don't "clean them up"):
+
+- RDS connects with `?sslmode=disable` + `rds.force_ssl=0` because the
+  Convex backend can't verify Amazon's private RDS CA (VPC-internal traffic)
+- The ALB DNS name is hardcoded to break a CloudFront↔ECS env circular
+  dependency — update it if the ALB is ever recreated
+- CloudFront can't reach origins on ports 81–1023, hence listener 3211
+- The site-proxy health check accepts 404 (no HTTP action at `/`)
 
 ## Releases (Changesets)
 
