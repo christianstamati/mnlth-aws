@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router"
+import { createFileRoute, Link } from "@tanstack/react-router"
 import { Badge } from "@workspace/ui/components/badge"
 import { Button } from "@workspace/ui/components/button"
 import { ButtonGroup } from "@workspace/ui/components/button-group"
@@ -20,7 +20,7 @@ function App() {
   const [count, setCount] = useState(0)
 
   return (
-    <div className="flex min-h-svh items-center justify-center bg-muted/40 p-6">
+    <div className="flex min-h-svh flex-col items-center justify-center gap-4 bg-muted/40 p-6">
       <Card className="w-full max-w-xs">
         <CardHeader>
           <CardTitle>Counter</CardTitle>
@@ -69,6 +69,12 @@ function App() {
           </Button>
         </CardFooter>
       </Card>
+      <Link
+        to="/todos"
+        className="text-muted-foreground text-sm hover:underline"
+      >
+        Todos →
+      </Link>
     </div>
   )
 }
