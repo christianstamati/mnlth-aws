@@ -5,7 +5,52 @@
 /* biome-ignore-all lint: auto-generated */
 
 declare module "sst" {
-  export interface Resource {}
+  export interface Resource {
+    Convex: {
+      service: string
+      type: "sst.aws.Service"
+      url: string
+    }
+    ConvexDb: {
+      database: string
+      host: string
+      password: string
+      port: number
+      type: "sst.aws.Postgres"
+      username: string
+    }
+    ConvexExports: {
+      name: string
+      type: "sst.aws.Bucket"
+    }
+    ConvexFiles: {
+      name: string
+      type: "sst.aws.Bucket"
+    }
+    ConvexInstanceSecret: {
+      type: "sst.sst.Secret"
+      value: string
+    }
+    ConvexModules: {
+      name: string
+      type: "sst.aws.Bucket"
+    }
+    ConvexSearch: {
+      name: string
+      type: "sst.aws.Bucket"
+    }
+    ConvexSnapshotImports: {
+      name: string
+      type: "sst.aws.Bucket"
+    }
+    Vpc: {
+      type: "sst.aws.Vpc"
+    }
+    Web: {
+      type: "sst.aws.TanstackStart"
+      url: string
+    }
+  }
 }
 
 import "sst"
