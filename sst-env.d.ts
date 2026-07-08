@@ -11,6 +11,10 @@ declare module "sst" {
       type: "sst.aws.Service"
       url: string
     }
+    ConvexAdminKey: {
+      type: "sst.sst.Secret"
+      value: string
+    }
     ConvexDb: {
       database: string
       host: string
