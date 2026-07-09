@@ -55,9 +55,13 @@ If the web app ever complains about a missing/incorrect `VITE_CONVEX_URL`, run
 1. Branch off `main` (e.g. `feat/thing`), commit, push, open a PR.
 2. GitHub Actions runs **CI** (Biome lint/format + typecheck + tests) and
    **Greptile** posts an automatic AI review with inline comments.
-3. The SST Console autodeploys a **preview stage** (`pr-<number>`) with its
-   own web deployment; previews share the production Convex backend.
-4. Fix review findings, merge. Closing the PR tears the preview stage down.
+3. The SST Console autodeploys an **isolated preview stage** (`pr-<number>`):
+   its own web deployment **and its own Convex backend** (dedicated Fargate
+   task, own database on the shared RDS server, own S3 buckets and CloudFront
+   URLs). The preview URL is commented on the PR automatically.
+4. Fix review findings, merge. Closing the PR tears the preview stage down
+   (the preview's database on RDS is left behind — drop it manually if you
+   care; they're tiny).
 5. On merge to `main`, the SST Console deploys the `production` stage:
    infrastructure, Convex functions (pushed automatically during the deploy),
    and the web app.
@@ -80,6 +84,14 @@ The production stage runs:
   distributions for HTTPS (API on origin port 80 → 3210, HTTP actions on
   origin port 3211)
 - Convex functions are pushed automatically during every production deploy
+
+Preview stages (`pr-<n>`, or any non-production stage such as a personal
+`bunx sst deploy --stage chris`) run the same shape at ~$0.70/day: a
+0.5 vCPU / 1 GB Convex task that reuses production's VPC and ALB. Preview
+traffic is routed by an `x-mnlth-stage` header that each preview's CloudFront
+distribution adds and ALB listener rules match; the stage database
+(`mnlth_pr_<n>`) is created on the shared RDS server by an in-VPC Lambda at
+deploy time, and functions are deployed with an admin key derived via Docker.
 
 Secrets (set once per stage with `bunx sst secret set <name> <value>`):
 
@@ -104,6 +116,12 @@ Gotchas encoded in `sst.config.ts` (don't "clean them up"):
   dependency — update it if the ALB is ever recreated
 - CloudFront can't reach origins on ports 81–1023, hence listener 3211
 - The site-proxy health check accepts 404 (no HTTP action at `/`)
+- Preview stages hardcode production's VPC/ALB/listener/subnet IDs — update
+  the `prod` constants in the preview branch if production plumbing is ever
+  recreated
+- The GitHub deployment reporting in the autodeploy workflow needs
+  `GITHUB_TOKEN` in the SST Console runner env (both environments); it
+  no-ops silently without it
 
 ## Releases (Changesets)
 
