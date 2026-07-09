@@ -4,6 +4,100 @@
 // stages — which don't create their own backend — can point at production.
 const PROD_CONVEX_API_URL = "https://dbny1ctgv35cc.cloudfront.net"
 
+// Reports deploys to GitHub (Environments panel + "View deployment" on PRs
+// + preview-URL comment), mirroring Vercel's integration. Requires a
+// fine-grained PAT in the runner env as GITHUB_TOKEN (SST Console → app
+// settings → Autodeploy → Environment variables); silently no-ops without it.
+// biome-ignore lint/suspicious/noExplicitAny: event shape comes from SST at runtime
+function createGithubReporter(event: any, stage: string | undefined) {
+  const token = process.env.GITHUB_TOKEN
+  const owner = event.repo?.owner
+  const repo = event.repo?.repo
+  const enabled = Boolean(token && owner && repo && stage)
+  const environment = stage === "production" ? "Production" : "Preview"
+  let deploymentId: number | undefined
+
+  // biome-ignore lint/suspicious/noExplicitAny: generic GitHub API payloads
+  async function api(path: string, init?: any): Promise<any> {
+    const res = await fetch(`https://api.github.com${path}`, {
+      ...init,
+      headers: {
+        authorization: `Bearer ${token}`,
+        accept: "application/vnd.github+json",
+        "x-github-api-version": "2022-11-28",
+      },
+    })
+    if (!res.ok)
+      throw new Error(`GitHub ${path}: ${res.status} ${await res.text()}`)
+    return res.status === 204 ? null : res.json()
+  }
+
+  return {
+    async report(state: "success" | "failure", url?: string) {
+      if (!enabled) {
+        console.log("GITHUB_TOKEN not set — skipping GitHub deployment status")
+        return
+      }
+      try {
+        if (!deploymentId) {
+          const dep = await api(`/repos/${owner}/${repo}/deployments`, {
+            method: "POST",
+            body: JSON.stringify({
+              ref: event.commit.id,
+              environment,
+              auto_merge: false,
+              required_contexts: [],
+              transient_environment: stage !== "production",
+              production_environment: stage === "production",
+              description: `sst deploy ${stage}`,
+            }),
+          })
+          deploymentId = dep.id
+        }
+        await api(
+          `/repos/${owner}/${repo}/deployments/${deploymentId}/statuses`,
+          {
+            method: "POST",
+            body: JSON.stringify({
+              state,
+              environment_url: url,
+              auto_inactive: true,
+            }),
+          }
+        )
+      } catch (error) {
+        console.log("GitHub deployment reporting failed:", error)
+      }
+    },
+
+    async comment(url: string) {
+      if (!enabled || event.type !== "pull_request") return
+      try {
+        const marker = "<!-- sst-preview-url -->"
+        const body = `${marker}\n🔍 **Preview deployed**: ${url}\n\n_Stage \`${stage}\` · commit ${event.commit.id.slice(0, 7)}_`
+        const comments = await api(
+          `/repos/${owner}/${repo}/issues/${event.number}/comments`
+        )
+        // biome-ignore lint/suspicious/noExplicitAny: GitHub API payload
+        const existing = comments.find((c: any) => c.body?.includes(marker))
+        if (existing) {
+          await api(`/repos/${owner}/${repo}/issues/comments/${existing.id}`, {
+            method: "PATCH",
+            body: JSON.stringify({ body }),
+          })
+        } else {
+          await api(`/repos/${owner}/${repo}/issues/${event.number}/comments`, {
+            method: "POST",
+            body: JSON.stringify({ body }),
+          })
+        }
+      } catch (error) {
+        console.log("GitHub PR comment failed:", error)
+      }
+    },
+  }
+}
+
 export default $config({
   app(input) {
     return {
@@ -34,6 +128,50 @@ export default $config({
         if (event.type === "pull_request") {
           return { stage: `pr-${event.number}` }
         }
+      },
+      runner: {
+        cache: {
+          paths: [
+            "node_modules",
+            "apps/web/node_modules",
+            "packages/backend/node_modules",
+            "packages/ui/node_modules",
+          ],
+        },
+      },
+      async workflow({ $, event }) {
+        const stage =
+          event.type === "branch" && event.branch === "main"
+            ? "production"
+            : event.type === "pull_request"
+              ? `pr-${event.number}`
+              : undefined
+        const github = createGithubReporter(event, stage)
+
+        await $`bun install --frozen-lockfile`
+
+        if (event.action === "removed") {
+          await $`bunx sst remove`
+          return
+        }
+
+        try {
+          await $`bunx sst deploy`
+        } catch (error) {
+          await github.report("failure")
+          throw error
+        }
+
+        let url: string | undefined
+        try {
+          const { readFileSync } = await import("node:fs")
+          url = JSON.parse(readFileSync(".sst/outputs.json", "utf8")).web
+        } catch {
+          console.log("could not read .sst/outputs.json — no URL to report")
+        }
+
+        await github.report("success", url)
+        if (url) await github.comment(url)
       },
     },
   },
