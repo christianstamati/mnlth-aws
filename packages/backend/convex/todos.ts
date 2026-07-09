@@ -37,3 +37,12 @@ export const remove = mutation({
     return null
   },
 })
+
+export const count = query({
+  args: {},
+  returns: v.number(),
+  handler: async (ctx) => {
+    const todos = await ctx.db.query("todos").take(1000)
+    return todos.length
+  },
+})
