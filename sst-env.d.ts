@@ -9,19 +9,6 @@ declare module "sst" {
     Convex: {
       service: string
       type: "sst.aws.Service"
-      url: string
-    }
-    ConvexAdminKey: {
-      type: "sst.sst.Secret"
-      value: string
-    }
-    ConvexDb: {
-      database: string
-      host: string
-      password: string
-      port: number
-      type: "sst.aws.Postgres"
-      username: string
     }
     ConvexExports: {
       name: string
@@ -39,6 +26,10 @@ declare module "sst" {
       name: string
       type: "sst.aws.Bucket"
     }
+    ConvexPostgresUrl: {
+      type: "sst.sst.Secret"
+      value: string
+    }
     ConvexSearch: {
       name: string
       type: "sst.aws.Bucket"
@@ -46,6 +37,10 @@ declare module "sst" {
     ConvexSnapshotImports: {
       name: string
       type: "sst.aws.Bucket"
+    }
+    PreviewDbProvision: {
+      name: string
+      type: "sst.aws.Function"
     }
     Vpc: {
       type: "sst.aws.Vpc"
