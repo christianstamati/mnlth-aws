@@ -98,8 +98,11 @@ export default $config({
   app(input) {
     return {
       name: "mnlth",
-      removal: input?.stage === "production" ? "retain" : "remove",
-      protect: ["production"].includes(input?.stage),
+      // Teardown mode (2026-07-09): protection lifted so `sst remove` can
+      // delete production. Restore removal:"retain" + protect on production
+      // before ever deploying this stack again.
+      removal: "remove",
+      protect: false,
       home: "aws",
       providers: {
         aws: {
@@ -113,17 +116,10 @@ export default $config({
   },
   console: {
     autodeploy: {
-      target(event) {
-        if (
-          event.type === "branch" &&
-          event.branch === "main" &&
-          event.action === "pushed"
-        ) {
-          return { stage: "production" }
-        }
-        if (event.type === "pull_request") {
-          return { stage: `pr-${event.number}` }
-        }
+      target() {
+        // Autodeploy disabled — infrastructure torn down 2026-07-09.
+        // Restore the main→production and PR→pr-<n> mappings to re-enable.
+        return undefined
       },
       runner: {
         cache: {
