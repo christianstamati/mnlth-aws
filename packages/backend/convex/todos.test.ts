@@ -29,3 +29,26 @@ test("remove deletes the todo", async () => {
   await t.mutation(api.todos.remove, { id })
   expect(await t.query(api.todos.list, {})).toHaveLength(0)
 })
+
+test("toggle flips undefined to true, then true to false", async () => {
+  const t = convexTest(schema, modules)
+  const id = await t.mutation(api.todos.add, { text: "toggle me" })
+
+  const [before] = await t.query(api.todos.list, {})
+  expect(before.completed).toBeUndefined()
+
+  await t.mutation(api.todos.toggle, { id })
+  const [afterFirst] = await t.query(api.todos.list, {})
+  expect(afterFirst.completed).toBe(true)
+
+  await t.mutation(api.todos.toggle, { id })
+  const [afterSecond] = await t.query(api.todos.list, {})
+  expect(afterSecond.completed).toBe(false)
+})
+
+test("toggle on a deleted todo throws", async () => {
+  const t = convexTest(schema, modules)
+  const id = await t.mutation(api.todos.add, { text: "gone" })
+  await t.mutation(api.todos.remove, { id })
+  await expect(t.mutation(api.todos.toggle, { id })).rejects.toThrow()
+})

@@ -12,6 +12,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@workspace/ui/components/card"
+import { Checkbox } from "@workspace/ui/components/checkbox"
 import { Input } from "@workspace/ui/components/input"
 import { Separator } from "@workspace/ui/components/separator"
 import { ArrowLeft, Plus, Trash2 } from "lucide-react"
@@ -31,6 +32,9 @@ function TodosPage() {
   const add = useMutation({ mutationFn: useConvexMutation(api.todos.add) })
   const remove = useMutation({
     mutationFn: useConvexMutation(api.todos.remove),
+  })
+  const toggle = useMutation({
+    mutationFn: useConvexMutation(api.todos.toggle),
   })
 
   function handleSubmit(e: React.FormEvent) {
@@ -86,9 +90,26 @@ function TodosPage() {
                   key={todo._id}
                   className="group flex items-center justify-between gap-2 rounded-md px-2 py-1.5 hover:bg-muted"
                 >
-                  <span className="min-w-0 break-words text-sm">
-                    {todo.text}
-                  </span>
+                  <div className="flex min-w-0 items-center gap-2.5">
+                    <Checkbox
+                      checked={todo.completed ?? false}
+                      onCheckedChange={() => toggle.mutate({ id: todo._id })}
+                      aria-label={
+                        todo.completed
+                          ? `Mark "${todo.text}" as not done`
+                          : `Mark "${todo.text}" as done`
+                      }
+                    />
+                    <span
+                      className={`min-w-0 break-words text-sm ${
+                        todo.completed
+                          ? "text-muted-foreground line-through"
+                          : ""
+                      }`}
+                    >
+                      {todo.text}
+                    </span>
+                  </div>
                   <Button
                     variant="ghost"
                     size="icon"

@@ -8,6 +8,7 @@ export const list = query({
       _id: v.id("todos"),
       _creationTime: v.number(),
       text: v.string(),
+      completed: v.optional(v.boolean()),
     })
   ),
   handler: async (ctx) => {
@@ -34,6 +35,20 @@ export const remove = mutation({
   returns: v.null(),
   handler: async (ctx, args) => {
     await ctx.db.delete(args.id)
+    return null
+  },
+})
+
+export const toggle = mutation({
+  args: { id: v.id("todos") },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const todo = await ctx.db.get(args.id)
+    if (todo === null) {
+      throw new Error("Todo not found")
+    }
+    // `completed` is optional on pre-existing docs; undefined counts as false.
+    await ctx.db.patch(args.id, { completed: !(todo.completed ?? false) })
     return null
   },
 })
